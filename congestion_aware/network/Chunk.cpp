@@ -7,6 +7,7 @@ LICENSE file in the root directory of this source tree.
 #include "congestion_aware/Device.h"
 #include "congestion_aware/Link.h"
 #include <cassert>
+#include <utility>
 
 using namespace NetworkAnalyticalCongestionAware;
 
@@ -33,11 +34,22 @@ void Chunk::chunk_arrived_next_device(void* const chunk_ptr) noexcept {
 Chunk::Chunk(const ChunkSize chunk_size, Route route, const Callback callback, const CallbackArg callback_arg) noexcept
     : chunk_size(chunk_size),
       route(std::move(route)),
-      callback(callback),
-      callback_arg(callback_arg) {
+      completion_state(
+          std::make_shared<CompletionState>(callback, callback_arg)) {
     assert(chunk_size > 0);
     assert(!this->route.empty());
     assert(callback != nullptr);
+}
+
+Chunk::Chunk(const ChunkSize chunk_size,
+             Route route,
+             std::shared_ptr<CompletionState> completion_state) noexcept
+    : chunk_size(chunk_size),
+      route(std::move(route)),
+      completion_state(std::move(completion_state)) {
+    assert(chunk_size > 0);
+    assert(!this->route.empty());
+    assert(this->completion_state != nullptr);
 }
 
 std::shared_ptr<Device> Chunk::current_device() const noexcept {
@@ -80,7 +92,35 @@ ChunkSize Chunk::get_size() const noexcept {
     return chunk_size;
 }
 
+std::vector<std::unique_ptr<Chunk>> Chunk::split(
+    const std::vector<ChunkSize>& chunk_sizes) const noexcept {
+    assert(!chunk_sizes.empty());
+    assert(completion_state != nullptr);
+
+    ChunkSize total_child_size = 0;
+    for (const auto child_size : chunk_sizes) {
+        assert(child_size > 0);
+        total_child_size += child_size;
+    }
+    assert(total_child_size == chunk_size);
+
+    completion_state->pending_chunks += chunk_sizes.size() - 1;
+
+    std::vector<std::unique_ptr<Chunk>> children;
+    children.reserve(chunk_sizes.size());
+    for (const auto child_size : chunk_sizes) {
+        children.push_back(
+            std::unique_ptr<Chunk>(new Chunk(child_size, route, completion_state)));
+    }
+    return children;
+}
+
 void Chunk::invoke_callback() noexcept {
-    // invoke callback
-    (*callback)(callback_arg);
+    assert(completion_state != nullptr);
+    assert(completion_state->pending_chunks > 0);
+
+    completion_state->pending_chunks--;
+    if (completion_state->pending_chunks == 0) {
+        (*completion_state->callback)(completion_state->callback_arg);
+    }
 }

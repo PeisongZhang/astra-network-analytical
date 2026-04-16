@@ -1,0 +1,2 @@
+topology: [ Custom ]
+topology_file: "custom_parallel_links_topology.txt"

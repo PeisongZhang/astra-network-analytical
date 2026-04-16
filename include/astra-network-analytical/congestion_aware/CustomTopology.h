@@ -22,11 +22,12 @@ namespace NetworkAnalyticalCongestionAware {
  * Topology file format:
  *   Line 1:   total_nodes  switch_count  link_count
  *   Line 2:   switch_id_0  switch_id_1  ...  switch_id_N
- *   Line 3+:  src  dst  bandwidth  latency  error_rate
+ *   Line 3+:  src  dst  bandwidth  latency  error_rate  [weight]
  *
  * Bandwidth is a string like "4800Gbps" or "200Gbps".
  * Latency is a string like "0.00015ms" or "0.0005ms".
- * Links are treated as bidirectional.
+ * Links are treated as bidirectional. When multiple parallel links exist
+ * between the same endpoints, `weight` controls the traffic split ratio.
  */
 class CustomTopology final : public Topology {
   public:

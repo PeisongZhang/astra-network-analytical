@@ -9,6 +9,7 @@ LICENSE file in the root directory of this source tree.
 #include "congestion_aware/Type.h"
 #include <map>
 #include <memory>
+#include <vector>
 
 using namespace NetworkAnalytical;
 
@@ -20,6 +21,11 @@ namespace NetworkAnalyticalCongestionAware {
  */
 class Device {
   public:
+    struct LinkAttachment {
+        std::shared_ptr<Link> link;
+        uint32_t weight;
+    };
+
     /**
      * Constructor.
      *
@@ -48,16 +54,20 @@ class Device {
      * @param id id of the device to connect this device to
      * @param bandwidth bandwidth of the link
      * @param latency latency of the link
+     * @param weight traffic split ratio of this link among parallel links
      */
-    void connect(DeviceId id, Bandwidth bandwidth, Latency latency) noexcept;
+    void connect(DeviceId id,
+                 Bandwidth bandwidth,
+                 Latency latency,
+                 uint32_t weight = 1) noexcept;
 
   private:
     /// device Id
     DeviceId device_id;
 
     /// links to other nodes
-    /// map[dest node node_id] -> link
-    std::map<DeviceId, std::shared_ptr<Link>> links;
+    /// map[dest node node_id] -> parallel links
+    std::map<DeviceId, std::vector<LinkAttachment>> links;
 
     /**
      * Check if this device is connected to another device.
@@ -66,6 +76,10 @@ class Device {
      * @return true if connected to the given device, false otherwise
      */
     [[nodiscard]] bool connected(DeviceId dest) const noexcept;
+
+    [[nodiscard]] std::vector<ChunkSize> split_chunk_across_links(
+        ChunkSize chunk_size,
+        const std::vector<LinkAttachment>& attachments) const noexcept;
 };
 
 }  // namespace NetworkAnalyticalCongestionAware

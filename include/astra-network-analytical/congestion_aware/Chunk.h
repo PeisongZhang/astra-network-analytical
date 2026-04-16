@@ -8,6 +8,7 @@ LICENSE file in the root directory of this source tree.
 #include "common/Type.h"
 #include "congestion_aware/Type.h"
 #include <memory>
+#include <vector>
 
 using namespace NetworkAnalytical;
 
@@ -74,6 +75,17 @@ class Chunk {
     [[nodiscard]] ChunkSize get_size() const noexcept;
 
     /**
+     * Split this chunk into multiple child chunks that share the same route and
+     * completion callback. The original chunk is expected to be discarded after
+     * creating the children.
+     *
+     * @param chunk_sizes child chunk sizes
+     * @return child chunks
+     */
+    [[nodiscard]] std::vector<std::unique_ptr<Chunk>> split(
+        const std::vector<ChunkSize>& chunk_sizes) const noexcept;
+
+    /**
      * Invoke the registered callback
      * i.e., this method should be called when the chunk arrives its destination.
      */
@@ -90,10 +102,22 @@ class Chunk {
     Route route;
 
     /// callback to be invoked when the chunk arrives at its destination
-    Callback callback;
+    struct CompletionState {
+        CompletionState(Callback callback, CallbackArg callback_arg) noexcept
+            : callback(callback),
+              callback_arg(callback_arg),
+              pending_chunks(1) {}
 
-    /// argument of the callback
-    CallbackArg callback_arg;
+        Callback callback;
+        CallbackArg callback_arg;
+        size_t pending_chunks;
+    };
+
+    std::shared_ptr<CompletionState> completion_state;
+
+    Chunk(ChunkSize chunk_size,
+          Route route,
+          std::shared_ptr<CompletionState> completion_state) noexcept;
 };
 
 }  // namespace NetworkAnalyticalCongestionAware

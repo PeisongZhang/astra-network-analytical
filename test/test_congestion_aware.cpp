@@ -132,3 +132,22 @@ TEST_F(TestNetworkAnalyticalCongestionAware, AllGatherOnRing) {
     const auto simulation_time = event_queue->get_current_time();
     EXPECT_EQ(simulation_time, 704'116);
 }
+
+TEST_F(TestNetworkAnalyticalCongestionAware, CustomParallelLinksWeightedSplit) {
+    const auto network_parser = NetworkParser("../../input/CustomParallelLinks.yml");
+    const auto topology = construct_topology(network_parser);
+
+    auto route = topology->route(0, 1);
+    auto chunk = std::make_unique<Chunk>(chunk_size, route, callback, nullptr);
+    topology->send(std::move(chunk));
+
+    while (!event_queue->finished()) {
+        event_queue->proceed();
+    }
+
+    // 1 MiB split across 8 Gbps and 24 Gbps links with 1:3 weights gives
+    // 256 KiB and 768 KiB children. Both take 262,144 ns to serialize, plus
+    // 10 ns propagation latency.
+    const auto simulation_time = event_queue->get_current_time();
+    EXPECT_EQ(simulation_time, 262'154);
+}

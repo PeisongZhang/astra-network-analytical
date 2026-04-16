@@ -144,17 +144,34 @@ CustomTopology::CustomTopology(const std::string& topology_file) noexcept
     adjacency.resize(total_nodes);
     auto representative_bw = std::numeric_limits<Bandwidth>::infinity();
 
-    // Lines 3+: src dst bandwidth latency error_rate
-    for (int i = 0; i < link_count; i++) {
+    // Lines 3+: src dst bandwidth latency error_rate [weight]
+    for (int parsed_links = 0; parsed_links < link_count;) {
+        std::string link_line;
+        if (!std::getline(infile >> std::ws, link_line)) {
+            std::cerr << "[Error] (CustomTopology) Failed to read link "
+                      << parsed_links << " in " << topology_file << std::endl;
+            std::exit(-1);
+        }
+        if (link_line.empty() || link_line[0] == '#') {
+            continue;
+        }
+
         int src_id = 0, dst_id = 0;
         std::string bw_str, lat_str;
         double error_rate = 0;
-
-        infile >> src_id >> dst_id >> bw_str >> lat_str >> error_rate;
-
-        if (infile.fail()) {
+        uint32_t weight = 1;
+        std::istringstream iss(link_line);
+        if (!(iss >> src_id >> dst_id >> bw_str >> lat_str >> error_rate)) {
             std::cerr << "[Error] (CustomTopology) Failed to parse link "
-                      << i << " in " << topology_file << std::endl;
+                      << parsed_links << " in " << topology_file << std::endl;
+            std::exit(-1);
+        }
+        if (!(iss >> weight)) {
+            weight = 1;
+        }
+        if (weight == 0) {
+            std::cerr << "[Error] (CustomTopology) Link weight must be >= 1: "
+                      << link_line << std::endl;
             std::exit(-1);
         }
 
@@ -163,11 +180,12 @@ CustomTopology::CustomTopology(const std::string& topology_file) noexcept
         representative_bw = std::min(representative_bw, bw);
 
         // Create bidirectional link
-        connect(src_id, dst_id, bw, lat, true);
+        connect(src_id, dst_id, bw, lat, true, weight);
 
         // Add to adjacency list (bidirectional)
         adjacency[src_id].push_back(dst_id);
         adjacency[dst_id].push_back(src_id);
+        parsed_links++;
     }
 
     infile.close();
