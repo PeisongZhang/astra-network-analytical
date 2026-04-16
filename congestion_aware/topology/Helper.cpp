@@ -43,8 +43,7 @@ std::shared_ptr<Topology> NetworkAnalyticalCongestionAware::construct_topology(
     case TopologyBuildingBlock::FullyConnected:
         return std::make_shared<FullyConnected>(npus_count, bandwidth, latency);
     case TopologyBuildingBlock::Custom:
-        return std::make_shared<CustomTopology>(
-            network_parser.get_topology_file(), bandwidth);
+        return std::make_shared<CustomTopology>(network_parser.get_topology_file());
     default:
         std::cerr << "[Error] (network/analytical/congestion_aware) " << "not supported basic-topology" << std::endl;
         std::exit(-1);

@@ -34,11 +34,8 @@ class CustomTopology final : public Topology {
      * Constructor.
      *
      * @param topology_file path to the ns3-format topology file
-     * @param representative_bw representative bandwidth (GB/s) for
-     *        ASTRA-sim scheduling decisions
      */
-    CustomTopology(const std::string& topology_file,
-                   Bandwidth representative_bw) noexcept;
+    explicit CustomTopology(const std::string& topology_file) noexcept;
 
     /**
      * Implementation of route function in Topology.

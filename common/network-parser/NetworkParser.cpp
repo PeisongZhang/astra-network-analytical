@@ -6,6 +6,7 @@ LICENSE file in the root directory of this source tree.
 #include "common/NetworkParser.h"
 #include <cassert>
 #include <filesystem>
+#include <limits>
 #include <iostream>
 
 using namespace NetworkAnalytical;
@@ -87,9 +88,21 @@ void NetworkParser::parse_network_config_yml(const YAML::Node& network_config) n
     dims_count = static_cast<int>(topology_per_dim.size());
 
     // parse vector values
-    npus_count_per_dim = parse_vector<int>(network_config["npus_count"]);
-    bandwidth_per_dim = parse_vector<Bandwidth>(network_config["bandwidth"]);
-    latency_per_dim = parse_vector<Latency>(network_config["latency"]);
+    if (network_config["npus_count"]) {
+        npus_count_per_dim = parse_vector<int>(network_config["npus_count"]);
+    } else {
+        npus_count_per_dim = std::vector<int>(dims_count, 0);
+    }
+    if (network_config["bandwidth"]) {
+        bandwidth_per_dim = parse_vector<Bandwidth>(network_config["bandwidth"]);
+    } else {
+        bandwidth_per_dim = std::vector<Bandwidth>(dims_count, 0);
+    }
+    if (network_config["latency"]) {
+        latency_per_dim = parse_vector<Latency>(network_config["latency"]);
+    } else {
+        latency_per_dim = std::vector<Latency>(dims_count, 0);
+    }
 
     // parse optional topology_file (for Custom topology)
     if (network_config["topology_file"]) {
@@ -144,18 +157,22 @@ void NetworkParser::check_validity() const noexcept {
         std::exit(-1);
     }
 
-    // npus_count should be all positive
-    for (const auto& npus_count : npus_count_per_dim) {
-        if (npus_count <= 1) {
+    // npus_count should be all positive for non-Custom topologies.
+    for (int dim = 0; dim < dims_count; dim++) {
+        const auto npus_count = npus_count_per_dim[dim];
+        const auto topology = topology_per_dim[dim];
+        if (topology != TopologyBuildingBlock::Custom && npus_count <= 1) {
             std::cerr << "[Error] (network/analytical) " << "npus_count (" << npus_count << ") should be larger than 1"
                       << std::endl;
             std::exit(-1);
         }
     }
 
-    // bandwidths should be all positive
-    for (const auto& bandwidth : bandwidth_per_dim) {
-        if (bandwidth <= 0) {
+    // bandwidths should be all positive for non-Custom topologies.
+    for (int dim = 0; dim < dims_count; dim++) {
+        const auto bandwidth = bandwidth_per_dim[dim];
+        const auto topology = topology_per_dim[dim];
+        if (topology != TopologyBuildingBlock::Custom && bandwidth <= 0) {
             std::cerr << "[Error] (network/analytical) " << "bandwidth (" << bandwidth << ") should be larger than 0"
                       << std::endl;
             std::exit(-1);

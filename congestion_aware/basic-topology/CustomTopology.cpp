@@ -6,9 +6,11 @@ LICENSE file in the root directory of this source tree.
 #include "congestion_aware/CustomTopology.h"
 #include <algorithm>
 #include <cassert>
+#include <cmath>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <queue>
 #include <sstream>
 #include <string>
@@ -109,8 +111,7 @@ void CustomTopology::build_routing_tables() noexcept {
     }
 }
 
-CustomTopology::CustomTopology(const std::string& topology_file,
-                               Bandwidth representative_bw) noexcept
+CustomTopology::CustomTopology(const std::string& topology_file) noexcept
     : Topology() {
 
     std::ifstream infile(topology_file);
@@ -135,13 +136,13 @@ CustomTopology::CustomTopology(const std::string& topology_file,
     this->devices_count = total_nodes;
     this->dims_count = 1;
     this->npus_count_per_dim.push_back(this->npus_count);
-    this->bandwidth_per_dim.push_back(representative_bw);
 
     // Instantiate all devices (NPUs + switches)
     instantiate_devices();
 
     // Build adjacency list for BFS routing
     adjacency.resize(total_nodes);
+    auto representative_bw = std::numeric_limits<Bandwidth>::infinity();
 
     // Lines 3+: src dst bandwidth latency error_rate
     for (int i = 0; i < link_count; i++) {
@@ -159,6 +160,7 @@ CustomTopology::CustomTopology(const std::string& topology_file,
 
         Bandwidth bw = parse_bandwidth_str(bw_str);
         Latency lat = parse_latency_str(lat_str);
+        representative_bw = std::min(representative_bw, bw);
 
         // Create bidirectional link
         connect(src_id, dst_id, bw, lat, true);
@@ -169,6 +171,13 @@ CustomTopology::CustomTopology(const std::string& topology_file,
     }
 
     infile.close();
+
+    if (!std::isfinite(representative_bw)) {
+        std::cerr << "[Error] (CustomTopology) No valid link bandwidth found in "
+                  << topology_file << std::endl;
+        std::exit(-1);
+    }
+    this->bandwidth_per_dim.push_back(representative_bw);
 
     std::cout << "[CustomTopology] Loaded topology: "
               << npus_count << " NPUs, "
