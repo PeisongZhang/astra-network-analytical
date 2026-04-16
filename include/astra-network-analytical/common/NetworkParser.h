@@ -7,6 +7,7 @@ LICENSE file in the root directory of this source tree.
 
 #include "common/Type.h"
 #include <iostream>
+#include <string>
 #include <yaml-cpp/yaml.h>
 
 namespace NetworkAnalytical {
@@ -60,6 +61,14 @@ class NetworkParser {
      */
     [[nodiscard]] std::vector<TopologyBuildingBlock> get_topologies_per_dim() const noexcept;
 
+    /**
+     * Get the topology file path (for Custom topology type).
+     * Returns empty string if not specified.
+     *
+     * @return absolute path to the topology file
+     */
+    [[nodiscard]] std::string get_topology_file() const noexcept;
+
   private:
     /// number of network dimensions
     int dims_count;
@@ -75,6 +84,9 @@ class NetworkParser {
 
     /// topology building block per each dimension
     std::vector<TopologyBuildingBlock> topology_per_dim;
+
+    /// path to topology file (for Custom topology type)
+    std::string topology_file;
 
     /**
      * Parse topology name (in string) into TopologyBuildingBlock enum

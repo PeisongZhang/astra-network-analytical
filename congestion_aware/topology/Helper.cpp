@@ -4,6 +4,7 @@ LICENSE file in the root directory of this source tree.
 *******************************************************************************/
 
 #include "congestion_aware/Helper.h"
+#include "congestion_aware/CustomTopology.h"
 #include "congestion_aware/FullyConnected.h"
 #include "congestion_aware/Ring.h"
 #include "congestion_aware/Switch.h"
@@ -41,8 +42,10 @@ std::shared_ptr<Topology> NetworkAnalyticalCongestionAware::construct_topology(
         return std::make_shared<Switch>(npus_count, bandwidth, latency);
     case TopologyBuildingBlock::FullyConnected:
         return std::make_shared<FullyConnected>(npus_count, bandwidth, latency);
+    case TopologyBuildingBlock::Custom:
+        return std::make_shared<CustomTopology>(
+            network_parser.get_topology_file(), bandwidth);
     default:
-        // shouldn't reaach here
         std::cerr << "[Error] (network/analytical/congestion_aware) " << "not supported basic-topology" << std::endl;
         std::exit(-1);
     }

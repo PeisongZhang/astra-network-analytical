@@ -5,6 +5,7 @@ LICENSE file in the root directory of this source tree.
 
 #include "common/NetworkParser.h"
 #include <cassert>
+#include <filesystem>
 #include <iostream>
 
 using namespace NetworkAnalytical;
@@ -15,6 +16,7 @@ NetworkParser::NetworkParser(const std::string& path) noexcept : dims_count(-1) 
     bandwidth_per_dim = {};
     latency_per_dim = {};
     topology_per_dim = {};
+    topology_file = "";
 
     try {
         // load network config file
@@ -22,6 +24,12 @@ NetworkParser::NetworkParser(const std::string& path) noexcept : dims_count(-1) 
 
         // parse network configs
         parse_network_config_yml(network_config);
+
+        // resolve topology_file relative to YAML file directory
+        if (!topology_file.empty() && !std::filesystem::path(topology_file).is_absolute()) {
+            auto yaml_dir = std::filesystem::path(path).parent_path();
+            topology_file = (yaml_dir / topology_file).string();
+        }
     } catch (const YAML::BadFile& e) {
         // loading network config file failed
         std::cerr << "[Error] (network/analytical) " << e.what() << std::endl;
@@ -63,6 +71,10 @@ std::vector<TopologyBuildingBlock> NetworkParser::get_topologies_per_dim() const
     return topology_per_dim;
 }
 
+std::string NetworkParser::get_topology_file() const noexcept {
+    return topology_file;
+}
+
 void NetworkParser::parse_network_config_yml(const YAML::Node& network_config) noexcept {
     // parse topology_per_dim
     const auto topology_names = parse_vector<std::string>(network_config["topology"]);
@@ -78,6 +90,11 @@ void NetworkParser::parse_network_config_yml(const YAML::Node& network_config) n
     npus_count_per_dim = parse_vector<int>(network_config["npus_count"]);
     bandwidth_per_dim = parse_vector<Bandwidth>(network_config["bandwidth"]);
     latency_per_dim = parse_vector<Latency>(network_config["latency"]);
+
+    // parse optional topology_file (for Custom topology)
+    if (network_config["topology_file"]) {
+        topology_file = network_config["topology_file"].as<std::string>();
+    }
 
     // check the validity of the parsed network config
     check_validity();
@@ -96,6 +113,10 @@ TopologyBuildingBlock NetworkParser::parse_topology_name(const std::string& topo
 
     if (topology_name == "Switch") {
         return TopologyBuildingBlock::Switch;
+    }
+
+    if (topology_name == "Custom") {
+        return TopologyBuildingBlock::Custom;
     }
 
     // shouldn't reach here
@@ -145,6 +166,16 @@ void NetworkParser::check_validity() const noexcept {
     for (const auto& latency : latency_per_dim) {
         if (latency < 0) {
             std::cerr << "[Error] (network/analytical) " << "latency (" << latency << ") should be non-negative"
+                      << std::endl;
+            std::exit(-1);
+        }
+    }
+
+    // Custom topology requires topology_file
+    for (const auto& topo : topology_per_dim) {
+        if (topo == TopologyBuildingBlock::Custom && topology_file.empty()) {
+            std::cerr << "[Error] (network/analytical) "
+                      << "Custom topology requires 'topology_file' field in YAML config"
                       << std::endl;
             std::exit(-1);
         }
