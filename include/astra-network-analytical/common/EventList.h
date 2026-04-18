@@ -8,6 +8,7 @@ LICENSE file in the root directory of this source tree.
 #include "common/Event.h"
 #include "common/Type.h"
 #include <list>
+#include <vector>
 
 namespace NetworkAnalytical {
 
@@ -42,6 +43,16 @@ class EventList {
      * Invoke all events in the event list.
      */
     void invoke_events() noexcept;
+
+    /**
+     * Move out all events currently registered in the event list.
+     *
+     * This is used by EventQueue to execute a stable batch while callbacks
+     * schedule newly-created events into the same timestamp.
+     *
+     * @return events registered before the drain
+     */
+    [[nodiscard]] std::vector<Event> drain_events() noexcept;
 
   private:
     /// event time of the event list

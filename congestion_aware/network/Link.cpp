@@ -35,6 +35,7 @@ void Link::set_event_queue(std::shared_ptr<EventQueue> event_queue_ptr) noexcept
 
     // set the event queue
     Link::event_queue = std::move(event_queue_ptr);
+    EventQueue::register_parallel_safe_callback(Link::link_become_free);
 }
 
 Link::Link(const Bandwidth bandwidth, const Latency latency) noexcept

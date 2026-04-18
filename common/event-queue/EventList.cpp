@@ -33,3 +33,15 @@ void EventList::invoke_events() noexcept {
         events.pop_front();
     }
 }
+
+std::vector<Event> EventList::drain_events() noexcept {
+    auto drained_events = std::vector<Event>();
+    drained_events.reserve(events.size());
+
+    while (!events.empty()) {
+        drained_events.emplace_back(events.front());
+        events.pop_front();
+    }
+
+    return drained_events;
+}
